@@ -1,0 +1,8 @@
+*.iml
+.idea/
+target/
+log/
+*.log*
+*.class
+*.patch
+*.DS_Store
