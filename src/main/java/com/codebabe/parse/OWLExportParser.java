@@ -1,11 +1,15 @@
 package com.codebabe.parse;
 
+import com.codebabe.util.ClassUtils;
+import com.codebabe.util.StringUtils;
 import org.apache.log4j.Logger;
 
 import java.io.*;
-import java.lang.reflect.Method;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * author: code.babe
@@ -21,9 +25,16 @@ public class OWLExportParser<T> implements Parser<T> {
         if (file != null && file.exists() && file.isFile()) {
             List<T> list = new ArrayList<T>();
             BufferedReader reader = new BufferedReader(new FileReader(file));
-            String line = null;
+            // 获取第一行
+            String line = reader.readLine();
+            Map<String, Object> map = parseHeader(line, "\t");
             while ((line = reader.readLine()) != null) {
-                T t = parseLine2Obj(line, "\t", clazz);
+                T t = null;
+                try {
+                    t = parseLine2Obj(line, "\t", clazz, map);
+                } catch (Exception e) {
+                    logger.error(String.format("parse failed, line = %s", line), e);
+                }
                 if (t != null) {
                     list.add(t);
                 }
@@ -33,17 +44,42 @@ public class OWLExportParser<T> implements Parser<T> {
         return null;
     }
 
-    // 不支持带有list的类, 可执行实现
-    public T parseLine2Obj(String line, String regex, Class<T> clazz) {
+    // 不支持带有list的类, 可自行实现
+    public T parseLine2Obj(String line, String regex, Class<T> clazz, Map<String, Object> map) throws InvocationTargetException, IllegalAccessException {
         String[] apart = line.split(regex);
         T instance = newInstance(clazz);
         if (instance != null) {
-            Method[] methods = clazz.getMethods();
-            for (Method method : methods) {
-
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                String filed = entry.getKey();
+                Integer index = (Integer) entry.getValue();
+                ClassUtils.assignValue(filed, StringUtils.trimBesideFigure(apart[index], "\""), instance);
             }
+//            Method[] methods = clazz.getMethods();
+//            for (Method method : methods) {
+//                String methodName = method.getName();
+//                String filed = StringUtils.fieldByMethod(methodName, StringUtils.SETTER);
+//                if (StringUtils.isNotBlank(filed)) {
+//                    if (map.containsKey(filed)) {
+//                        int index = (Integer) map.get(filed);
+//                        String value = apart[index];
+//                        ClassUtils.assignValue(filed, value, instance);
+//                        method.invoke(instance, value);
+//                    }
+//                }
+//            }
         }
         return instance;
+    }
+
+    public Map<String, Object> parseHeader(String line, String regex) {
+        Map<String, Object> map = new HashMap<String, Object>();
+        if (line != null) {
+            String[] headers = line.split(regex);
+            for (int i = 0; i < headers.length; i++) {
+                map.put(headers[i], i);
+            }
+        }
+        return map;
     }
 
     private T newInstance(Class<T> clazz) {

@@ -1,7 +1,9 @@
 package com.codebabe.parse;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * author: code.babe
@@ -17,11 +19,19 @@ public interface Parser<T> {
     List<T> parseData(String path, Class<T> clazz) throws IOException;
 
     /**
-     * 将一行数据装成合适的json
+     * 将一行数据解析为一个实体类, 注意的是需要setter和getter方法
      * @param line
      * @param regex
      * @param clazz
      * @return
      */
-    T parseLine2Obj(String line, String regex, Class<T> clazz);
+    T parseLine2Obj(String line, String regex, Class<T> clazz, Map<String, Object> map) throws InvocationTargetException, IllegalAccessException;
+
+    /**
+     * 解析列名, 主要是每个field的名字
+     * @param line
+     * @param regex
+     * @return k: name, v: index
+     */
+    Map<String, Object> parseHeader(String line, String regex);
 }
