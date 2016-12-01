@@ -25,7 +25,7 @@ public class ClassUtils {
                     if (returnType != null) {
                         if (!returnType.equals(String.class)) {
                             for (Method typeMethod : returnType.getMethods()) {
-                                if (StringUtils.startsWith(typeMethod.getName(), "parse") && typeMethod.getParameterCount() == 1) {
+                                if ((StringUtils.startsWith(typeMethod.getName(), "parse") || StringUtils.startsWith(typeMethod.getName(), "valueOf")) && typeMethod.getParameterCount() == 1) {
                                     param = typeMethod.invoke(null, value);
                                 }
                             }
@@ -38,7 +38,6 @@ public class ClassUtils {
                 }
             }
         } catch (Exception e) {
-            Long l = new Long(1);
             e.printStackTrace();
             return null;
         }

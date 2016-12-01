@@ -1,5 +1,6 @@
 package com.codebabe.parse;
 
+import com.codebabe.anno.MockCall;
 import com.codebabe.util.ClassUtils;
 import com.codebabe.util.StringUtils;
 import org.apache.log4j.Logger;
@@ -54,19 +55,6 @@ public class OWLExportParser<T> implements Parser<T> {
                 Integer index = (Integer) entry.getValue();
                 ClassUtils.assignValue(filed, StringUtils.trimBesideFigure(apart[index], "\""), instance);
             }
-//            Method[] methods = clazz.getMethods();
-//            for (Method method : methods) {
-//                String methodName = method.getName();
-//                String filed = StringUtils.fieldByMethod(methodName, StringUtils.SETTER);
-//                if (StringUtils.isNotBlank(filed)) {
-//                    if (map.containsKey(filed)) {
-//                        int index = (Integer) map.get(filed);
-//                        String value = apart[index];
-//                        ClassUtils.assignValue(filed, value, instance);
-//                        method.invoke(instance, value);
-//                    }
-//                }
-//            }
         }
         return instance;
     }

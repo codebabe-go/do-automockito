@@ -1,0 +1,360 @@
+package com.netease.ysf.unicorn.service.impl;
+
+import com.google.common.collect.Lists;
+import com.netease.ysf.common.util.LongPair;
+import com.netease.ysf.device.model.Category;
+import com.netease.ysf.device.model.RobotKnowledge;
+import com.netease.ysf.engine.storage.CategoryStorage;
+import com.netease.ysf.engine.storage.MessageStorage;
+import com.netease.ysf.unicorn.controller.vo.report.ReportRobotHotQuestionsVO;
+import com.netease.ysf.unicorn.controller.vo.report.ReportRobotQuestionTypeVO;
+import com.netease.ysf.unicorn.service.RobotKnowledgeService;
+import com.netease.ysf.unicorn.service.RobotPageListService;
+import com.netease.ysf.unicorn.util.robot.report.KeyHelper;
+import com.netease.ysf.unicorn.util.robot.report.MappingHelper;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.*;
+
+/**
+ * author: code.babe
+ * date: 2016-10-08 10:09
+ * 机器人问题知识库匹配, 主要涉及到的就是问题类型
+ *
+ * <p>机器人知识库和我们的知识库都是一样的, 也就是问题如果能返回在我们知识库中一定是找得到问题类型的</p>
+ * <p>这里的sessionType实际上指的就是category, 也就是问题类型<p/>
+ */
+@Service("robotPageListService")
+public class RobotKnowledgeTypeService implements RobotPageListService {
+
+    private static final Logger logger = Logger.getLogger(RobotKnowledgeTypeService.class);
+
+    @Autowired
+    private MessageStorage messageStorage;
+    @Autowired
+    private CategoryStorage categoryStorage;
+    @Autowired
+    private RobotKnowledgeService robotKnowledgeService;
+
+    @Override
+    public List<ReportRobotHotQuestionsVO> getHotQuestions(Long corpId, Long startTime, Long endTime, String keyword) {
+        // TODO: code.babe 16/10/1 这里关键词匹配用的是DB like, 有时间优化, 先完成功能
+        @MockCall
+        List<LongPair> messageCount = messageStorage.queryMessagesByCorpIdAndKeyword(corpId, startTime, endTime, keyword);
+
+        if (0 == messageCount.size()) {
+            logger.warn(String.format("[getHotQuestions]corp_id = %d has no validate message", corpId));
+            Lists.newArrayList();
+        }
+
+        List<ReportRobotHotQuestionsVO> returns = new ArrayList<>();
+
+        // 这里不需要整合相同的knowledgeId, 只是统计问题, 这里的粒度单位是消息(也就是问题)
+        // 这里不涉及父子级别所以不需要重建树结构来维持父子关系
+        for (LongPair item : messageCount) {
+            Long knowledgeId = item.getKey1();
+            ReportRobotHotQuestionsVO vo = new ReportRobotHotQuestionsVO();
+            RobotKnowledge knowledge = robotKnowledgeService.getKnowledgeById(corpId, knowledgeId);
+            if (null == knowledge) {
+                logger.warn(String.format("[getHotQuestions]knowledge_id = %d cannot match a knowledge", knowledgeId));
+            } else {
+                String question = knowledge.getQuestion();
+                Long sessionTypeId = knowledge.getCategory();
+
+                if (0 == sessionTypeId) { // 表示会话未分类
+                    vo.setQuestionName(question);
+                    vo.setQuestionType("未分类");
+                    vo.setMatchNums(item.getValue());
+                    vo.setChildType("0");
+                    vo.setId(knowledgeId);
+                } else {
+                    @MockCall
+                    Category sessionType = categoryStorage.query(corpId, sessionTypeId);
+                    if (null == sessionType) {
+                        logger.warn(String.format("[getHotQuestions]session_type_id = %d cannot match session", sessionTypeId));
+                    } else {
+                        if (sessionType.getLevel() == 1) {
+                            vo.setId(knowledgeId);
+                            vo.setChildType("0");
+                            vo.setMatchNums(item.getValue());
+                            vo.setQuestionName(question);
+                            vo.setQuestionType(sessionType.getDescription());
+                        } else {
+                            vo.setId(knowledgeId);
+                            vo.setChildType(sessionType.getDescription());
+                            Long parent = sessionType.getParent_type();
+                            vo.setQuestionName(question);
+                            vo.setMatchNums(item.getValue());
+                            Category parentCategory = categoryStorage.query(corpId, parent);
+                            vo.setQuestionType(parentCategory.getDescription() + "-" + sessionType.getDescription());
+                        }
+                    }
+                }
+                if (vo.getId() != null) {
+                    returns.add(vo);
+                }
+            }
+        }
+        Collections.sort(returns, new Comparator<ReportRobotHotQuestionsVO>() {
+            @Override
+            public int compare(ReportRobotHotQuestionsVO o1, ReportRobotHotQuestionsVO o2) {
+                if (null != o1 && null != o2) {
+                    // 不喜欢用包装类的主要原因之一....很容易空指针.....
+                    if (o1.getMatchNums() != null && o2.getMatchNums() != null) {
+                        return o1.getMatchNums() > o2.getMatchNums() ? -1 : (o1.getMatchNums() == o2.getMatchNums() ? 0 : 1);
+                    }
+                }
+                return 0;
+            }
+        });
+
+        return returns;
+    }
+
+    /**
+     *
+     * 一级分类未分类情况
+     *
+     * 二级分类存在未分类情况:
+     *  级别    自有数量    展示数量
+     *  1       5           11
+     *  1-1     1           1
+     *  1-2     2           2
+     *  1-3     3           3
+     *                      5 默认补上"未分类, 表示一级分类匹配的数量", 如果二级分类中有未分类, 这里进行叠加
+     *
+     * 只有二级分类的情况: 下发的时候需要显示这个一级分类的二级分类
+     */
+    @Override
+    public List<ReportRobotQuestionTypeVO> getQuestionsType(Long corpId, Long startTime, Long endTime, Integer category) {
+
+        // key: session_id, value: validate count
+        List<LongPair> messages = messageStorage.queryMessagesByCorpId(corpId, startTime, endTime);
+        if (0 == messages.size()) {
+            logger.warn(String.format("[getQuestionsType]corp_id = %d has no validate message", corpId));
+            return Lists.newArrayList();
+        }
+
+        // 占配比的时候使用
+        Long sum = 0L;
+        for (LongPair item : messages) {
+            sum += item.getValue();
+        }
+        logger.debug(String.format("[getQuestionsType]matched sum = %d", sum));
+
+        List<ReportRobotQuestionTypeVO> returns = new ArrayList<>(messages.size());
+
+        // TODO: code.babe 16/9/30 定义一个合适的数据结构, 希望在O(n)的时间复杂度来完成
+
+        // 设置缓存后面需要用到, 防止多次io, 线程封闭不会有并发问题
+        // key: category_id, value: Category
+        Map<Long, Category> categoryCache = new HashMap<>();
+        // key: category_id, value: match number
+        Map<Long, Long> matchersCache = new HashMap<>();
+
+        MappingHelper mappingHelper = new MappingHelper();
+
+        // 第一次遍历设置父子类关系
+        for (LongPair pair : messages) {
+            Long knowledgeId = pair.getKey1();
+            @MockCall
+            RobotKnowledge knowledge = robotKnowledgeService.getKnowledgeById(corpId, knowledgeId);
+            if (null == knowledge) { // 如果没有匹配的知识库 直接减去, 不在统计范围内
+                sum -= pair.getValue();
+                logger.warn(String.format("[getQuestionsType]knowledge_id = %d cannot match a knowledge", knowledgeId));
+            } else {
+                Long sessionTypeId = knowledge.getCategory();
+                Category sessionType = categoryStorage.query(corpId, sessionTypeId);
+
+                if (null == sessionType) {
+                    logger.info(String.format("[getQuestionsType]category_id = %d cannot match category, corp_id = %d, knowledge_id = %d", sessionTypeId, corpId, knowledgeId));
+                    if (categoryCache.containsKey(0L) && matchersCache.containsKey(0L)) {
+                        Long matcher = matchersCache.get(0L);
+                        matcher += pair.getValue();
+                        matchersCache.put(0L, matcher);
+                    } else {
+                        sessionType = new Category(0L, "未分类");
+                        // 默认为一级分类
+                        sessionType.setParent_type(0L);
+                        sessionType.setLevel(1);
+                        categoryCache.put(0L, sessionType);
+                        matchersCache.put(0L, pair.getValue());
+                    }
+                    mappingHelper.addElement(sessionType, knowledgeId);
+                } else {
+                    logger.debug(String.format("[getQuestionsType]corp_id = %d, category_id = %d, knowledge_id = %d get a category parent_id = %d", corpId, sessionType.getId(), knowledgeId, sessionType.getParent_type()));
+                    categoryCache.put(sessionType.getId(), sessionType);
+                    if (matchersCache.containsKey(sessionType.getId())) {
+                        logger.debug(String.format("[getQuestionsType]category_id = %d has existed in cache", sessionType.getId()));
+                        matchersCache.put(sessionType.getId(), matchersCache.get(sessionType.getId()) + pair.getValue());
+                    } else {
+                        matchersCache.put(sessionType.getId(), pair.getValue());
+                    }
+                    mappingHelper.addElement(sessionType, knowledgeId);
+                }
+            }
+        }
+
+        Map<KeyHelper, Set<Long>> mapper = mappingHelper.getHeir();
+        for (Map.Entry<KeyHelper, Set<Long>> entry : mapper.entrySet()) {
+            ReportRobotQuestionTypeVO vo = new ReportRobotQuestionTypeVO();
+            // 一次循环为一个一级分类(包含子类)
+            for (Long sessionTypeId : entry.getValue()) {
+                Category sessionType = categoryCache.get(sessionTypeId);
+                ReportRobotQuestionTypeVO.Category httpCategory = fillInnerVO(sessionType, categoryCache, matchersCache, sum);
+                // 逐个塞儿子
+                vo.addCategorySonType(httpCategory, false);
+            }
+            vo.sort4Setting();
+            returns.add(vo);
+        }
+
+//        logger.debug(String.format("[getQuestionsType]relation = %s, category cache = %s, matcher cache = %s", JSONObject.toJSONString(mappingHelper.getHeir()), JSONObject.toJSONString(categoryCache), JSONObject.toJSONString(matchersCache)));
+
+        // 都经过这个处理, 默认是全选 category = 0
+        // 做额外处理
+        for (ReportRobotQuestionTypeVO vo : returns) {
+            List<ReportRobotQuestionTypeVO.Category> categories = vo.getCategories();
+            boolean isNeedSort = false;
+            if (categories.size() > 1) { // 将只属于父类的那一部分降为二级分类, 一级分类显示总数
+                ReportRobotQuestionTypeVO.Category downLevelOne = categories.get(0);
+                if (downLevelOne.getCategory() == 1) {
+                    ReportRobotQuestionTypeVO.Category normal = categories.get(1);
+                    ReportRobotQuestionTypeVO.Category down = downLevelOne.clone();
+
+                    downLevelOne.setParentType("");
+                    downLevelOne.setRadio(new BigDecimal(vo.getSum()).divide(new BigDecimal(sum), 3, RoundingMode.HALF_DOWN));
+                    downLevelOne.setMatchNums(vo.getSum());
+
+                    down.setTypeName("未分类");
+                    down.setCategory(2);
+                    down.setParentType(normal.getParentType());
+                    // 额外添加不算总数
+                    vo.addCategorySonType(down, true);
+
+                    isNeedSort = true;
+                }
+            }
+
+            if (categories.size() > 0) { // 只有type2的情况
+                // TODO: code.babe 16/10/14 计算一发总占配比, 上线时间比较急, 这个下期优化, 小整一下数据模型即可
+                double sumRatio = 0.0;
+                for (ReportRobotQuestionTypeVO.Category c : categories) {
+                    sumRatio += c.getRadio().doubleValue();
+                }
+                ReportRobotQuestionTypeVO.Category first = categories.get(0);
+                if (first.getCategory() == 2) {
+                    Category current = categoryCache.get(first.getId());
+                    Category papa = categoryStorage.query(corpId, current.getParent_type());
+                    if (papa == null) {
+                        logger.warn(String.format("[getQuestionsType]category id = %d, parent id = %d cannot match a category", current.getId(), current.getParent_type()));
+                    }
+                    ReportRobotQuestionTypeVO.Category display = new ReportRobotQuestionTypeVO.Category();
+                    display.setParentType("");
+                    display.setTypeName(papa.getDescription());
+                    // 使用等比例来计算这个占配比
+                    display.setRadio(new BigDecimal(sumRatio).setScale(3, RoundingMode.HALF_DOWN));
+                    display.setCategory(1);
+                    // 爸爸显示的是总数
+                    display.setMatchNums(vo.getSum());
+                    display.setId(papa.getId());
+                    // 额外添加不算总数
+                    vo.addCategorySonType(display, true);
+                    isNeedSort = true;
+                }
+            }
+            if (isNeedSort) {
+                vo.sort4Display();
+            }
+            logger.debug(String.format("[for-each-debugger][extra-solve]vo categories size = %d", vo.getCategories().size()));
+        }
+
+        // category == 2的时候重新排序
+        if (category != 2) {
+            // 排序
+            Collections.sort(returns, new Comparator<ReportRobotQuestionTypeVO>() {
+                @Override
+                public int compare(ReportRobotQuestionTypeVO o1, ReportRobotQuestionTypeVO o2) {
+                    if (null != o1 && null != o2) {
+                        return o1.getSum() > o2.getSum() ? -1 : (o1.getSum() == o2.getSum() ? 0 : 1);
+                    }
+                    return 0;
+                }
+            });
+        }
+
+        logger.debug(String.format("[result-debugger]result size = %d", returns.size()));
+
+        if (category == 1) {
+            for (ReportRobotQuestionTypeVO vo : returns) {
+                vo.removeDown2Head();
+                logger.debug(String.format("[for-each-debugger-type=1][extra-solve]vo categories size = %d", vo.getCategories().size()));
+            }
+        }
+
+        // 类型二的时候, 如果一类类别下面没有子类需要显示 一级分类 - 未分类, 所以加起来肯定是100%
+        if (category == 2) {
+            for (ReportRobotQuestionTypeVO vo : returns) {
+                if (vo.getCategories().size() == 1) { // 说明只有一级分类, 没有子类
+                    ReportRobotQuestionTypeVO.Category fakeChild = vo.getCategories().get(0);
+                    fakeChild.setParentType(fakeChild.getTypeName());
+                    fakeChild.setCategory(2);
+                    fakeChild.setTypeName("");
+                } else {
+                    vo.removeHead();
+                }
+                logger.debug(String.format("[for-each-debugger-type=2r][extra-solve]vo categories size = %d", vo.getCategories().size()));
+            }
+        }
+
+        return returns;
+    }
+
+    /**
+     * 填充category
+     * @param sessionType
+     * @param categoryCache
+     * @param matchersCache
+     * @return
+     */
+    private ReportRobotQuestionTypeVO.Category fillInnerVO(Category sessionType, Map<Long, Category> categoryCache, Map<Long, Long> matchersCache, Long sum) {
+        ReportRobotQuestionTypeVO.Category httpCategory = new ReportRobotQuestionTypeVO.Category();
+        httpCategory.setId(sessionType.getId());
+        httpCategory.setTypeName(sessionType.getDescription());
+        if (sessionType.getLevel() == 2) {
+            Category temp = categoryCache.get(sessionType.getParent_type());
+            String description = "";
+            if (null == temp) {
+                logger.info(String.format("[fillInnerVO]parent_id = %d doesn't exist in category cache what is current data's categories", sessionType.getParent_type()));
+                Category _temp = categoryStorage.query(sessionType.getCorp_id(), sessionType.getParent_type());
+                description = _temp == null ? "未命名" : _temp.getDescription();
+            } else {
+                description = temp.getDescription();
+            }
+            httpCategory.setParentType(description);
+        } else {
+            httpCategory.setParentType("");
+        }
+        httpCategory.setMatchNums(matchersCache.get(sessionType.getId()));
+        httpCategory.setCategory(sessionType.getLevel());
+        httpCategory.setRadio(new BigDecimal(matchersCache.get(sessionType.getId())).divide(new BigDecimal(sum), 3, RoundingMode.HALF_DOWN));
+        return httpCategory;
+    }
+
+    // 提供mockito测试
+    public void setMessageStorage(MessageStorage messageStorage) {
+        this.messageStorage = messageStorage;
+    }
+
+    public void setCategoryStorage(CategoryStorage categoryStorage) {
+        this.categoryStorage = categoryStorage;
+    }
+
+    public void setRobotKnowledgeService(RobotKnowledgeService robotKnowledgeService) {
+        this.robotKnowledgeService = robotKnowledgeService;
+    }
+}
