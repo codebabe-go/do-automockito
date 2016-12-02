@@ -7,6 +7,7 @@ import com.codebabe.util.StringUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,12 +26,14 @@ public class OpenIt implements Unflowerred {
 
         Field[] fields = clz.getFields();
         T instance = clz.newInstance();
+        Map<String, Class> classMap = new HashMap<>();
         // 所有的注入filed都mock完毕
         for (Field field : fields) {
             Annotation annotation = field.getAnnotation(annotationClz);
             if (annotation != null) {
                 String fieldName = field.getName();
                 MockUtils.mockAndSet(fieldName, instance, field.getType());
+                classMap.put(fieldName, field.getType());
             }
         }
 
@@ -41,7 +44,7 @@ public class OpenIt implements Unflowerred {
         for (Map.Entry<String, List<String>> entry : map.entrySet()) {
             String mocked = entry.getKey();
             List<String> methods = entry.getValue();
-            // TODO: 01/12/2016 需要每个field的字节码去做mock操作
+            // TODO: 01/12/2016 需要每个field的字节码去做mock操作, 具体参数怎么匹配?
 //            when().thenReturn();
         }
 
