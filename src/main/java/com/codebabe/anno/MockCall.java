@@ -13,4 +13,10 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE_USE)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MockCall {
+    /**
+     * 参数-产生的类-产生的方法
+     * @default 默认没有中途产生的变量调用
+     * @return
+     */
+    String region() default "";
 }

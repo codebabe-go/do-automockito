@@ -1,8 +1,11 @@
 package com.codebabe.parse;
 
 import com.codebabe.common.MockCallScanner;
+import com.codebabe.model.MockCallModel;
+import com.codebabe.model.PrintType;
 import com.codebabe.util.MockUtils;
 import com.codebabe.util.StringUtils;
+import org.junit.Assert;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -11,17 +14,26 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.Mockito.*;
-
 /**
  * author: code.babe
  * date: 2016-12-01 21:46
  */
-public class OpenIt implements Unflowerred {
+public abstract class OpenIt implements Unflowerred {
+
+    public OpenIt(PrintType printType) {
+        this.printType = printType;
+    }
+
+    private PrintType printType;
+
     @Override
     public <T> void go4Unflowerring(Class<T> clz, Class annotationClz, String methodName, Object... args) throws Exception {
         if (clz == null) {
             return;
+        }
+
+        if (!(printType.getType() == PrintType.Type.S_OUT || printType.getType() == PrintType.Type.ASSERT)) {
+            throw new Exception(String.format("[go4Unflowerring]No print type = %d match", printType.getType()));
         }
 
         Field[] fields = clz.getFields();
@@ -39,21 +51,45 @@ public class OpenIt implements Unflowerred {
 
         MockCallScanner scanner = new MockCallScanner();
         String path = clz.getResource("").getPath();
-        Map<String, List<String>> map = scanner.scan4MockCall(path);
+        List<MockCallModel> mockitoList = scanner.scan4MockCall(path);
 
-        for (Map.Entry<String, List<String>> entry : map.entrySet()) {
-            String mocked = entry.getKey();
-            List<String> methods = entry.getValue();
-            // TODO: 01/12/2016 需要每个field的字节码去做mock操作, 具体参数怎么匹配?
-//            when().thenReturn();
+        for (MockCallModel mockCallModel : mockitoList) {
+            mockData(mockCallModel, instance, classMap);
         }
 
-        // 不专门去获取, 参数多少不是很好匹配
-        for (Method method : clz.getMethods()) {
-            if (StringUtils.equals(methodName, method.getName())) {
-                method.invoke(instance, args);
-                break;
+        if (printType.getType() == PrintType.Type.S_OUT) {
+            for (Method method : clz.getMethods()) {
+                if (StringUtils.equals(methodName, method.getName())) {
+                    System.out.println(method.invoke(instance, args));
+                    break;
+                }
+            }
+        }
+        if (printType.getType() == PrintType.Type.ASSERT) {
+            for (Method method : clz.getMethods()) {
+                if (StringUtils.equals(methodName, method.getName())) {
+                    Assert.assertTrue(printType.getData().equals(method.invoke(instance, args)));
+                    break;
+                }
             }
         }
     }
+
+    public PrintType getPrintType() {
+        return printType;
+    }
+
+    public void setPrintType(PrintType printType) {
+        this.printType = printType;
+    }
+
+    /**
+     * 调用mockito的when-return方法对数据进行mock
+     *
+     * @param mockCallModel 每个调用MockCall注解的 方法信息
+     * @param instance 操作测试方法的实例
+     * @param classMap 已经mock过的类组成的map
+     * @param <T> 实例的泛型
+     */
+    protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Class> classMap);
 }
