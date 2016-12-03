@@ -19,4 +19,9 @@ public class TestReflect {
         System.out.println(JSON.toJSONString(user));
     }
 
+    @Test
+    public void testReflect() {
+        System.out.println(ClassUtils.newInstance(Long.class));
+    }
+
 }

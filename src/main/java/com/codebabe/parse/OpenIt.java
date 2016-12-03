@@ -3,12 +3,14 @@ package com.codebabe.parse;
 import com.codebabe.common.MockCallScanner;
 import com.codebabe.model.MockCallModel;
 import com.codebabe.model.PrintType;
+import com.codebabe.util.ClassUtils;
 import com.codebabe.util.MockUtils;
 import com.codebabe.util.StringUtils;
 import org.junit.Assert;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +29,7 @@ public abstract class OpenIt implements Unflowerred {
     private PrintType printType;
 
     @Override
-    public <T> void go4Unflowerring(Class<T> clz, Class annotationClz, String methodName, Object... args) throws Exception {
+    public <T> void go4Unflowerring(Class<T> clz, Class annotationClz, String methodName, Map<String, String> pathMap) throws Exception {
         if (clz == null) {
             return;
         }
@@ -60,7 +62,7 @@ public abstract class OpenIt implements Unflowerred {
         if (printType.getType() == PrintType.Type.S_OUT) {
             for (Method method : clz.getMethods()) {
                 if (StringUtils.equals(methodName, method.getName())) {
-                    System.out.println(method.invoke(instance, args));
+                    System.out.println(execute(method, instance));
                     break;
                 }
             }
@@ -68,7 +70,7 @@ public abstract class OpenIt implements Unflowerred {
         if (printType.getType() == PrintType.Type.ASSERT) {
             for (Method method : clz.getMethods()) {
                 if (StringUtils.equals(methodName, method.getName())) {
-                    Assert.assertTrue(printType.getData().equals(method.invoke(instance, args)));
+                    Assert.assertTrue(printType.getData().equals(execute(method, instance)));
                     break;
                 }
             }
@@ -84,11 +86,29 @@ public abstract class OpenIt implements Unflowerred {
     }
 
     /**
+     * 特有的执行方法, mock数据的时候默认传入的参数, number为0, varchar为""
+     * @param method
+     * @param instance
+     * @param <T>
+     * @return
+     * @throws InvocationTargetException
+     * @throws IllegalAccessException
+     */
+    protected  <T> Object execute(Method method, T instance) throws InvocationTargetException, IllegalAccessException {
+        Class[] parameterType = method.getParameterTypes();
+        Object[] args = new Object[parameterType.length];
+        for (int i = 0; i < parameterType.length; i++) {
+            args[i] = ClassUtils.newInstance(parameterType[i]);
+        }
+        return method.invoke(instance, args);
+    }
+
+    /**
      * 调用mockito的when-return方法对数据进行mock
      *
      * @param mockCallModel 每个调用MockCall注解的 方法信息
      * @param instance 操作测试方法的实例
-     * @param classMap 已经mock过的类组成的map
+     * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldType</p>
      * @param <T> 实例的泛型
      */
     protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Class> classMap);
