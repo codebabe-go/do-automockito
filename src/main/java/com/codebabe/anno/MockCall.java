@@ -14,7 +14,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MockCall {
     /**
-     * 参数-产生的类-产生的方法
+     * 参数位置-产生的类-产生的方法, 多个参数之间使用"_"来连接, 位置从0开始计数
      * @default 默认没有中途产生的变量调用
      * @return
      */

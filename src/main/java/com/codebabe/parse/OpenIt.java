@@ -56,7 +56,7 @@ public abstract class OpenIt implements Unflowerred {
         List<MockCallModel> mockitoList = scanner.scan4MockCall(path);
 
         for (MockCallModel mockCallModel : mockitoList) {
-            mockData(mockCallModel, instance, classMap);
+            mockData(mockCallModel, instance, classMap, pathMap);
         }
 
         if (printType.getType() == PrintType.Type.S_OUT) {
@@ -111,5 +111,5 @@ public abstract class OpenIt implements Unflowerred {
      * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldType</p>
      * @param <T> 实例的泛型
      */
-    protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Class> classMap);
+    protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Class> classMap, Map<String, String> pathMap);
 }
