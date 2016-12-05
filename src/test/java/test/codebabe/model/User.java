@@ -51,4 +51,9 @@ public class User {
     public void setLocation(String location) {
         this.location = location;
     }
+
+    public User test(String param) {
+        name = param;
+        return this;
+    }
 }

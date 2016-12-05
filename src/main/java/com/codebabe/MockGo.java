@@ -3,11 +3,14 @@ package com.codebabe;
 import com.alibaba.fastjson.JSON;
 import com.codebabe.model.MockCallModel;
 import com.codebabe.model.PrintType;
+import com.codebabe.parse.OWLExportParser;
 import com.codebabe.parse.OpenIt;
+import com.codebabe.parse.Parser;
 import com.codebabe.util.ClassUtils;
 import com.codebabe.util.StringUtils;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Map;
 
@@ -41,7 +44,8 @@ public class MockGo extends OpenIt {
                     for (Method method : methods) {
                     if (StringUtils.equals(methodName, method.getName())) {
                         try {
-                            when(execute(method, instance)).thenReturn(mockReturnData(pathMap.get(methodName)));
+                            Object execution = execute(method, instance);
+                            when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
                             return;
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -69,15 +73,17 @@ public class MockGo extends OpenIt {
                                 Object[] args = new Object[parameterType.length];
                                 // 按顺序去遍历
                                 for (int i = 0, j = 0; i < parameterType.length && j < indexes.length; i++) {
+                                    // 如果是基于mock数据的需要拿到上面mock出来的值
                                     if (StringUtils.equals(i + "", indexes[j])) {
                                         // TODO: 03/12/2016 上下相关的
                                         j++;
-                                    } else {
+                                    } else { // 否则直接给出默认值
                                         args[i] = ClassUtils.newInstance(parameterType[i]);
                                     }
                                 }
                                 try {
-                                    when(method.invoke(indexes, args)).thenReturn(mockReturnData(pathMap.get(methodName)));
+                                    Object execution = method.invoke(indexes, args);
+                                    when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
                                     break;
                                 } catch (Exception e) {
                                     e.printStackTrace();
@@ -90,7 +96,13 @@ public class MockGo extends OpenIt {
         }
     }
 
-    private Object mockReturnData(String path) {
+    private Object mockReturnData(String path, Object instance) {
+        Parser parser = new OWLExportParser();
+        try {
+            return parser.parseData(path, instance.getClass());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return null;
     }
 }
