@@ -1,6 +1,7 @@
 package com.codebabe.parse;
 
 import com.codebabe.common.MockCallScanner;
+import com.codebabe.model.Entity;
 import com.codebabe.model.MockCallModel;
 import com.codebabe.model.PrintType;
 import com.codebabe.util.ClassUtils;
@@ -40,14 +41,16 @@ public abstract class OpenIt implements Unflowerred {
 
         Field[] fields = clz.getFields();
         T instance = clz.newInstance();
-        Map<String, Class> classMap = new HashMap<>();
+        Map<String, Entity> classMap = new HashMap<>();
         // 所有的注入filed都mock完毕
         for (Field field : fields) {
             Annotation annotation = field.getAnnotation(annotationClz);
             if (annotation != null) {
                 String fieldName = field.getName();
                 MockUtils.mockAndSet(fieldName, instance, field.getType());
-                classMap.put(fieldName, field.getType());
+//                classMap.put(fieldName, field.getType());
+                // TODO: 11/12/2016 增加entity关系映射
+                classMap.put(fieldName, new Entity());
             }
         }
 
@@ -111,5 +114,5 @@ public abstract class OpenIt implements Unflowerred {
      * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldType</p>
      * @param <T> 实例的泛型
      */
-    protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Class> classMap, Map<String, String> pathMap);
+    protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Entity> classMap, Map<String, String> pathMap);
 }

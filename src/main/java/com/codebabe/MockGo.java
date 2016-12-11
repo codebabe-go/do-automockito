@@ -1,6 +1,7 @@
 package com.codebabe;
 
 import com.alibaba.fastjson.JSON;
+import com.codebabe.model.Entity;
 import com.codebabe.model.MockCallModel;
 import com.codebabe.model.PrintType;
 import com.codebabe.parse.OWLExportParser;
@@ -30,7 +31,7 @@ public class MockGo extends OpenIt {
     }
 
     @Override
-    protected <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Class> classMap, Map<String, String> pathMap) {
+    protected <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Entity> entityMap, Map<String, String> pathMap) {
         logger.debug(String.format("model info = %s", JSON.toJSONString(mockCallModel)));
 
         String fieldName = mockCallModel.getCallable();
@@ -38,7 +39,7 @@ public class MockGo extends OpenIt {
 
         // 如果为空表示没有和上面的mock数据耦合, 可以直接操作
         if (StringUtils.isBlank(mockCallModel.getDetail())) {
-            Class callableClz = classMap.get(fieldName);
+            Class callableClz = entityMap.get(fieldName).getClz();
             if (callableClz != null) {
                 Method[] methods = callableClz.getMethods();
                     for (Method method : methods) {
@@ -54,7 +55,7 @@ public class MockGo extends OpenIt {
                 }
             }
         } else { // 否则, 和之前的mock数据进行耦合
-            Class clazz = classMap.get(fieldName);
+            Class clazz = entityMap.get(fieldName).getClz();
             if (clazz == null) {
                 return;
             }
@@ -64,7 +65,7 @@ public class MockGo extends OpenIt {
             String[] indexes = StringUtils.split(detail[0], "_");
             if (detail.length == 3) {
                 if (StringUtils.equals(detail[1], methodName)) {
-                    Class callableClz = classMap.get(fieldName);
+                    Class callableClz = entityMap.get(fieldName).getClz();
                     if (callableClz != null) {
                         Method[] methods = callableClz.getMethods();
                         for (Method method : methods) {
