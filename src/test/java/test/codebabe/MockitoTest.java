@@ -35,7 +35,7 @@ public class MockitoTest {
         // 具有传递性
         User u = user.test("fz");
         when(u).thenReturn(new User(1L, "fz", 20,"location"));
-        System.out.println(JSON.toJSONString(userService.getUser("fz")));
+        System.out.println(JSON.toJSONString(userService.get("fz")));
     }
 
     /**
@@ -54,9 +54,10 @@ public class MockitoTest {
                 break;
             }
         }
-        when(userService.user.test("fz")).thenReturn(new User(1L, "fz", 20,"location"));
+        User user = userService.user.test("fz");
+        when(user).thenReturn(new User(1L, "fz", 20,"location"));
         for (Method method : clz.getMethods()) {
-            if (StringUtils.equals(method.getName(), "getUser")) {
+            if (StringUtils.equals(method.getName(), "get")) {
                 System.out.println(JSON.toJSONString(method.invoke(userService, "fz")));
                 break;
             }

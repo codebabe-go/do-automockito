@@ -10,8 +10,12 @@ public class UserService {
 
     public User user;
 
-    public User getUser(String param) {
+    public User get(String param) {
         return user.test(param);
+    }
+
+    public User getUser() {
+        return user;
     }
 
     public void setUser(User user) {
