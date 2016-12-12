@@ -1,6 +1,5 @@
 package com.codebabe.parse;
 
-import com.codebabe.anno.MockCall;
 import com.codebabe.util.ClassUtils;
 import com.codebabe.util.StringUtils;
 import org.apache.log4j.Logger;

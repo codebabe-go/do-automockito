@@ -13,6 +13,7 @@ import org.apache.log4j.Logger;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.when;
@@ -24,8 +25,6 @@ import static org.mockito.Mockito.when;
  */
 public class MockGo extends OpenIt {
 
-    // TODO: 12/12/2016 需要重新整理思路 
-
     private final static Logger logger = Logger.getLogger(MockGo.class);
 
     public MockGo(PrintType printType) {
@@ -33,7 +32,7 @@ public class MockGo extends OpenIt {
     }
 
     @Override
-    protected <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Entity> entityMap, Map<String, String> pathMap) {
+    protected <T> void mockData(MockCallModel mockCallModel, Map<String, Entity> entityMap, Map<String, String> pathMap) {
         logger.debug(String.format("model info = %s", JSON.toJSONString(mockCallModel)));
 
         String fieldName = mockCallModel.getCallable();
@@ -41,13 +40,14 @@ public class MockGo extends OpenIt {
 
         // 如果为空表示没有和上面的mock数据耦合, 可以直接操作
         if (StringUtils.isBlank(mockCallModel.getDetail())) {
-            Class callableClz = entityMap.get(fieldName).getClz();
-            if (callableClz != null) {
+            Entity entity = entityMap.get(fieldName);
+            if (entity != null) {
+                Class callableClz = entity.getClz();
                 Method[] methods = callableClz.getMethods();
-                    for (Method method : methods) {
+                for (Method method : methods) {
                     if (StringUtils.equals(methodName, method.getName())) {
                         try {
-                            Object execution = execute(method, instance);
+                            Object execution = execute(method, entity.getInstance());
                             when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
                             return;
                         } catch (Exception e) {
@@ -102,7 +102,17 @@ public class MockGo extends OpenIt {
     private Object mockReturnData(String path, Object instance) {
         Parser parser = new OWLExportParser();
         try {
-            return parser.parseData(path, instance.getClass());
+            Object result = parser.parseData(path, instance.getClass());
+            if (result instanceof List) { // 返回值都是list
+                List ret = (List) result;
+                if (ret.size() == 0) {
+                    return null;
+                } else if(ret.size() == 1) {
+                    return ret.get(0);
+                } else {
+                    return ret;
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

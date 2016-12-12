@@ -100,14 +100,14 @@ public class MockitoTest {
                 Class userClass = entity.getClz();
                 for (Method inner : userClass.getMethods()) {
                     if (inner.getName().equals("test")) {
-                        for (Method getter : userServiceClass.getMethods()) {
-                            if (getter.getName().equals("getUser")) {
+//                        for (Method getter : userServiceClass.getMethods()) {
+//                            if (getter.getName().equals("getUser")) {
                                 // success
 //                                when(inner.invoke(/*invoke对象就是get出来的*/ getter.invoke(userService), param)).thenReturn(new User(1L, "fz", 20,"location"));
-                                when(inner.invoke(/*invoke对象就是get出来的*/ entity.getInstance(), param)).thenReturn(new User(1L, "fz", 20,"location"));
-                                break;
-                            }
-                        }
+//                                break;
+//                            }
+//                        }
+                        when(inner.invoke(/*invoke对象就是get出来的*/ entity.getInstance(), param)).thenReturn(new User(1L, "fz", 20,"location"));
                         break;
                     }
                 }
