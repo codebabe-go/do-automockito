@@ -1,7 +1,10 @@
 package com.codebabe.util;
 
+import com.codebabe.model.Entity;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
@@ -12,15 +15,17 @@ import static org.mockito.Mockito.*;
 public class MockUtils {
 
     /**
-     * 利用mockito框架设置
+     * 利用mockito建立mock数据和实体类关系
      * @param filed
      * @param instance
      * @param des
      */
-    public static <T> void mockAndSet(String filed, T instance, Class des) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+    public static <T> void mockAndSet(String filed, T instance, Class des, Map<String, Entity> instanceMap) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Class<T> clz = (Class<T>) instance.getClass();
         Method method = clz.getMethod(StringUtils.SETTER + StringUtils.reverseCaseByIndex(filed, 0), des);
-        method.invoke(instance, mock(des));
+        Object fieldInstance = mock(des);
+        instanceMap.put(filed, new Entity(filed, fieldInstance, clz));
+        method.invoke(instance, fieldInstance);
     }
 
 }

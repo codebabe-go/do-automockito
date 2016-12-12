@@ -47,10 +47,7 @@ public abstract class OpenIt implements Unflowerred {
             Annotation annotation = field.getAnnotation(annotationClz);
             if (annotation != null) {
                 String fieldName = field.getName();
-                MockUtils.mockAndSet(fieldName, instance, field.getType());
-//                classMap.put(fieldName, field.getType());
-                // TODO: 11/12/2016 增加entity关系映射
-                classMap.put(fieldName, new Entity());
+                MockUtils.mockAndSet(fieldName, instance, field.getType(), classMap);
             }
         }
 
@@ -111,7 +108,7 @@ public abstract class OpenIt implements Unflowerred {
      *
      * @param mockCallModel 每个调用MockCall注解的 方法信息
      * @param instance 操作测试方法的实例
-     * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldType</p>
+     * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldInstance</p>
      * @param <T> 实例的泛型
      */
     protected abstract <T> void mockData(MockCallModel mockCallModel, T instance, Map<String, Entity> classMap, Map<String, String> pathMap);

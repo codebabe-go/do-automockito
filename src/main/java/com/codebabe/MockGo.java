@@ -24,6 +24,8 @@ import static org.mockito.Mockito.when;
  */
 public class MockGo extends OpenIt {
 
+    // TODO: 12/12/2016 需要重新整理思路 
+
     private final static Logger logger = Logger.getLogger(MockGo.class);
 
     public MockGo(PrintType printType) {
