@@ -26,4 +26,22 @@ public class TestStringUtils {
         System.out.println(StringUtils.trimBesideFigure("a", "\""));
     }
 
+    @Test
+    public void testSub() {
+        String imp = "import com.codebabe.util.StringUtils;";
+        String packageName = StringUtils.substringBetween(imp, " ", ";");
+        System.out.println(packageName);
+        System.out.println(StringUtils.substringAfterLast(packageName, "."));
+
+        String line = "List<String> imp = \"import com.codebabe.util.StringUtils;\";";
+        String prefix = StringUtils.substringBefore(line, " ");
+        String result = "";
+        if (prefix.contains("<")) {
+            result = StringUtils.substringBetween(prefix, "<", ">");
+        } else {
+            result = prefix;
+        }
+        System.out.println(result);
+    }
+
 }

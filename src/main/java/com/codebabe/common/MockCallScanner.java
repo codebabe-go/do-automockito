@@ -1,7 +1,9 @@
 package com.codebabe.common;
 
 import com.codebabe.model.MockCallModel;
+import com.codebabe.util.ClassUtils;
 import com.codebabe.util.StringUtils;
+import org.apache.log4j.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -19,6 +21,8 @@ import java.util.Map;
  * 这里只针对一般的情况, 也就是<p>varType result = dao.insert(obj);</p>
  */
 public class MockCallScanner implements Scanner {
+
+    private final static Logger logger = Logger.getLogger(MockCallScanner.class);
 
     public final static String ANNOTATION_NAME = "@MockCall";
 
@@ -52,10 +56,11 @@ public class MockCallScanner implements Scanner {
         return map;
     }
 
-    public List<MockCallModel> scan4MockCall(String path) throws IOException {
+    public List<MockCallModel> scan4MockCall(String path) throws IOException, ClassNotFoundException {
         List<MockCallModel> returns = new ArrayList<>();
         File file = new File(path);
         if (file != null && file.exists() && file.isFile()) {
+            Map<String, Class> map = MockCallScanner.classMapping(file);
             BufferedReader reader = new BufferedReader(new FileReader(file));
             String line = null;
             while ((line = reader.readLine()) != null) {
@@ -72,10 +77,36 @@ public class MockCallScanner implements Scanner {
                     String functionName = StringUtils.substringBefore(_functionName, "(");
                     model.setCallable(mockClass);
                     model.setMethod(functionName);
+
+                    String prefix = StringUtils.substringBefore(line, " ");
+                    String returnType = "";
+                    if (prefix.contains("<")) {
+                        returnType = StringUtils.substringBetween(prefix, "<", ">");
+                    } else {
+                        returnType = prefix;
+                    }
+                    if (map.containsKey(returnType)) {
+                        model.setReturnType(map.get(returnType));
+                    } else {
+                        logger.error(String.format("return type = %s, cannot match in map", returnType));
+                    }
                     returns.add(model);
                 }
             }
         }
         return returns;
+    }
+
+    public static Map<String, Class> classMapping(File file) throws IOException, ClassNotFoundException {
+        Map<String, Class> map = new HashMap<>();
+        BufferedReader reader = new BufferedReader(new FileReader(file));
+        String line = null;
+        while ((line = reader.readLine()) != null) {
+            if (StringUtils.contains(line, "import") && !StringUtils.contains(line, "*")) {
+                String packageName = StringUtils.substringBetween(line, " ", ";");
+                map.put(StringUtils.substringAfterLast(packageName, "."), ClassUtils.loadClassByName(packageName));
+            }
+        }
+        return map;
     }
 }

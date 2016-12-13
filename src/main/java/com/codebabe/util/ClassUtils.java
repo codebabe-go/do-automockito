@@ -42,9 +42,21 @@ public class ClassUtils {
                     Object param = null;
                     if (returnType != null) {
                         if (!returnType.equals(String.class)) {
-                            for (Method typeMethod : returnType.getMethods()) {
-                                if ((StringUtils.startsWith(typeMethod.getName(), "parse") || StringUtils.startsWith(typeMethod.getName(), "valueOf")) && typeMethod.getParameterCount() == 1) {
-                                    param = typeMethod.invoke(null, value);
+                            for (Method typeMethod : returnType.getMethods()) { // 现在使用try-catch方式来解析, 可优化
+                                try {
+                                    if ((StringUtils.startsWith(typeMethod.getName(), "parse") && typeMethod.getParameterCount() == 1)) {
+                                        param = typeMethod.invoke(null, value);
+                                        break;
+                                    }
+                                    if (StringUtils.startsWith(typeMethod.getName(), "valueOf") && typeMethod.getParameterCount() == 1) {
+                                        param = typeMethod.invoke(null, value);
+                                        break;
+                                    }
+                                } catch (IllegalArgumentException e) {
+                                    if ((StringUtils.startsWith(typeMethod.getName(), "parse") && typeMethod.getParameterCount() == 1)) {
+                                        param = typeMethod.invoke(null, value);
+                                        break;
+                                    }
                                 }
                             }
                         } else {
@@ -98,6 +110,10 @@ public class ClassUtils {
         }
 
         return t;
+    }
+
+    public static Class loadClassByName(String completedName) throws ClassNotFoundException {
+        return Thread.currentThread().getContextClassLoader().loadClass(completedName);
     }
 
 }

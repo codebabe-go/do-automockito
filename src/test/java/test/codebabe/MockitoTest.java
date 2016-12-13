@@ -1,7 +1,10 @@
 package test.codebabe;
 
 import com.alibaba.fastjson.JSON;
+import com.codebabe.MockGo;
 import com.codebabe.model.Entity;
+import com.codebabe.model.PrintType;
+import com.codebabe.parse.OpenIt;
 import com.codebabe.util.ClassUtils;
 import com.codebabe.util.StringUtils;
 import org.junit.Before;
@@ -9,6 +12,7 @@ import org.junit.Test;
 import test.codebabe.api.UserService;
 import test.codebabe.model.User;
 
+import javax.annotation.Resource;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.HashMap;
@@ -115,6 +119,19 @@ public class MockitoTest {
                 System.exit(0);
             }
         }
+    }
+
+    /**
+     * 测试主要方法, 这里测试的是不涉及上下mock数据的
+     * @throws Exception
+     */
+    @Test
+    public void testMain() throws Exception {
+        OpenIt openIt = new MockGo(PrintType.Type.S_OUT);
+        Map<String, String> pathMap = new HashMap<>();
+        pathMap.put("test", "/Users/codebabe/Desktop/user.txt");
+        pathMap.put(UserService.class.getName(), "/Users/codebabe/Coding/do-automockito/src/test/java/test/codebabe/api/UserService.java");
+        openIt.go4Unflowerring(UserService.class, Resource.class, "get", pathMap);
     }
 
 }

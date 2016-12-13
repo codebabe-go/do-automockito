@@ -28,6 +28,14 @@ public class MockGo extends OpenIt {
 
     private final static Logger logger = Logger.getLogger(MockGo.class);
 
+    public MockGo(int type, Object data) {
+        super(type, data);
+    }
+
+    public MockGo(int type) {
+        super(type);
+    }
+
     public MockGo(PrintType printType) {
         super(printType);
     }
@@ -48,8 +56,7 @@ public class MockGo extends OpenIt {
                 for (Method method : methods) {
                     if (StringUtils.equals(methodName, method.getName())) {
                         try {
-                            Object execution = execute(method, entity.getInstance());
-                            when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
+                            when(execute(method, entity.getInstance())).thenReturn(mockReturnData(pathMap.get(methodName), mockCallModel.getReturnType()));
                             return;
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -93,7 +100,7 @@ public class MockGo extends OpenIt {
                         }
                         try {
                             Object execution = instanceMethod.invoke(instance, args);
-                            when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
+                            when(execution).thenReturn(mockReturnData(pathMap.get(methodName), null));
                         } catch (Exception e) {
                             e.printStackTrace();
                             logger.error(e);
@@ -106,10 +113,10 @@ public class MockGo extends OpenIt {
         }
     }
 
-    private Object mockReturnData(String path, Object instance) {
+    private Object mockReturnData(String path, Class clz) {
         Parser parser = new OWLExportParser();
         try {
-            Object result = parser.parseData(path, instance.getClass());
+            Object result = parser.parseData(path, clz);
             if (result instanceof List) { // 返回值都是list
                 List ret = (List) result;
                 if (ret.size() == 0) {

@@ -18,6 +18,8 @@ public class MockCallModel {
     private String callable;
     private String method;
     private String detail;
+    // 返回类型
+    private Class returnType;
 
     public String getCallable() {
         return callable;
@@ -43,12 +45,21 @@ public class MockCallModel {
         this.detail = detail;
     }
 
+    public Class getReturnType() {
+        return returnType;
+    }
+
+    public void setReturnType(Class returnType) {
+        this.returnType = returnType;
+    }
+
     @Override
     public String toString() {
         return "MockCallModel{" +
                 "callable='" + callable + '\'' +
                 ", method='" + method + '\'' +
                 ", detail='" + detail + '\'' +
+                ", returnType=" + returnType +
                 '}';
     }
 }

@@ -1,5 +1,6 @@
 package com.codebabe.parse;
 
+import com.alibaba.fastjson.JSON;
 import com.codebabe.common.MockCallScanner;
 import com.codebabe.model.Entity;
 import com.codebabe.model.MockCallModel;
@@ -27,6 +28,14 @@ public abstract class OpenIt implements Unflowerred {
         this.printType = printType;
     }
 
+    public OpenIt(int type) {
+        printType = new PrintType(type);
+    }
+
+    public OpenIt(int type, Object data) {
+        printType = new PrintType(type, data);
+    }
+
     private PrintType printType;
 
     @Override
@@ -52,7 +61,8 @@ public abstract class OpenIt implements Unflowerred {
         }
 
         MockCallScanner scanner = new MockCallScanner();
-        String path = clz.getResource("").getPath();
+//        String path = clz.getResource("").getPath();
+        String path = pathMap.get(clz.getName());
         List<MockCallModel> mockitoList = scanner.scan4MockCall(path);
 
         for (MockCallModel mockCallModel : mockitoList) {
@@ -62,7 +72,7 @@ public abstract class OpenIt implements Unflowerred {
         if (printType.getType() == PrintType.Type.S_OUT) {
             for (Method method : clz.getMethods()) {
                 if (StringUtils.equals(methodName, method.getName())) {
-                    System.out.println(execute(method, instance));
+                    System.out.println(JSON.toJSONString(execute(method, instance)));
                     break;
                 }
             }

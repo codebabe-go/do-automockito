@@ -1,6 +1,9 @@
 package test.codebabe.api;
 
+import com.codebabe.anno.MockCall;
 import test.codebabe.model.User;
+
+import javax.annotation.Resource;
 
 /**
  * author: code.babe
@@ -8,10 +11,13 @@ import test.codebabe.model.User;
  */
 public class UserService {
 
+    @Resource
     public User user;
 
     public User get(String param) {
-        return user.test(param);
+        @MockCall
+        User ret = user.test(param);
+        return ret;
     }
 
     public User getUser() {

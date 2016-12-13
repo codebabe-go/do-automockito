@@ -53,7 +53,8 @@ public class User {
     }
 
     public User test(String param) {
-        name = param;
-        return this;
+        User user = new User();
+        user.setName(param);
+        return user;
     }
 }

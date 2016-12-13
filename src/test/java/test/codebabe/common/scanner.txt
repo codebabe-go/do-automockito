@@ -42,7 +42,6 @@ public class RobotKnowledgeTypeService implements RobotPageListService {
 
     @Override
     public List<ReportRobotHotQuestionsVO> getHotQuestions(Long corpId, Long startTime, Long endTime, String keyword) {
-        // TODO: code.babe 16/10/1 这里关键词匹配用的是DB like, 有时间优化, 先完成功能
         @MockCall
         List<LongPair> messageCount = messageStorage.queryMessagesByCorpIdAndKeyword(corpId, startTime, endTime, keyword);
 
@@ -148,8 +147,6 @@ public class RobotKnowledgeTypeService implements RobotPageListService {
 
         List<ReportRobotQuestionTypeVO> returns = new ArrayList<>(messages.size());
 
-        // TODO: code.babe 16/9/30 定义一个合适的数据结构, 希望在O(n)的时间复杂度来完成
-
         // 设置缓存后面需要用到, 防止多次io, 线程封闭不会有并发问题
         // key: category_id, value: Category
         Map<Long, Category> categoryCache = new HashMap<>();
@@ -241,7 +238,6 @@ public class RobotKnowledgeTypeService implements RobotPageListService {
             }
 
             if (categories.size() > 0) { // 只有type2的情况
-                // TODO: code.babe 16/10/14 计算一发总占配比, 上线时间比较急, 这个下期优化, 小整一下数据模型即可
                 double sumRatio = 0.0;
                 for (ReportRobotQuestionTypeVO.Category c : categories) {
                     sumRatio += c.getRadio().doubleValue();

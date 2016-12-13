@@ -6,6 +6,18 @@ package com.codebabe.model;
  */
 public class PrintType {
 
+    public PrintType() {
+    }
+
+    public PrintType(int type) {
+        this.type = type;
+    }
+
+    public PrintType(int type, Object data) {
+        this.type = type;
+        this.data = data;
+    }
+
     public interface Type {
         int ASSERT = 1;
         int S_OUT = 2;

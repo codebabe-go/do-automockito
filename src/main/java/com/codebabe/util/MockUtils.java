@@ -24,7 +24,7 @@ public class MockUtils {
         Class<T> clz = (Class<T>) instance.getClass();
         Method method = clz.getMethod(StringUtils.SETTER + StringUtils.reverseCaseByIndex(filed, 0), des);
         Object fieldInstance = mock(des);
-        instanceMap.put(filed, new Entity(filed, fieldInstance, clz));
+        instanceMap.put(filed, new Entity(filed, fieldInstance, des));
         method.invoke(instance, fieldInstance);
     }
 

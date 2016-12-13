@@ -12,7 +12,7 @@ import java.io.IOException;
 public class TestScanner {
 
     @Test
-    public void testScanner() throws IOException {
+    public void testScanner() throws IOException, ClassNotFoundException {
         MockCallScanner mockCallScanner = new MockCallScanner();
         System.out.println(mockCallScanner.scan4MockCall("/Users/codebabe/Coding/do-automockito/src/test/java/test/codebabe/common/scanner.txt"));
     }
