@@ -108,7 +108,6 @@ public abstract class OpenIt implements Unflowerred {
      *
      * @param mockCallModel 每个调用MockCall注解的 方法信息
      * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldInstance</p>
-     * @param <T> 实例的泛型
      */
-    protected abstract <T> void mockData(MockCallModel mockCallModel, Map<String, Entity> classMap, Map<String, String> pathMap);
+    protected abstract void mockData(MockCallModel mockCallModel, Map<String, Entity> classMap, Map<String, String> pathMap);
 }

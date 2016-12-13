@@ -8,6 +8,7 @@ import com.codebabe.parse.OWLExportParser;
 import com.codebabe.parse.OpenIt;
 import com.codebabe.parse.Parser;
 import com.codebabe.util.ClassUtils;
+import com.codebabe.util.ParseMockCall;
 import com.codebabe.util.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -32,7 +33,7 @@ public class MockGo extends OpenIt {
     }
 
     @Override
-    protected <T> void mockData(MockCallModel mockCallModel, Map<String, Entity> entityMap, Map<String, String> pathMap) {
+    protected void mockData(MockCallModel mockCallModel, Map<String, Entity> entityMap, Map<String, String> pathMap) {
         logger.debug(String.format("model info = %s", JSON.toJSONString(mockCallModel)));
 
         String fieldName = mockCallModel.getCallable();
@@ -57,41 +58,47 @@ public class MockGo extends OpenIt {
                 }
             }
         } else { // 否则, 和之前的mock数据进行耦合
-            Class clazz = entityMap.get(fieldName).getClz();
-            if (clazz == null) {
+
+            Entity entity = entityMap.get(fieldName);
+            if (entity == null) {
+                logger.warn(String.format("[mockData]entity is null, field name = " + fieldName));
                 return;
             }
-            String mockcallAnno = mockCallModel.getDetail();
-            // 参数-产生的类-产生的方法, 小嘴
-            String[] detail = StringUtils.split(mockcallAnno, "-");
-            String[] indexes = StringUtils.split(detail[0], "_");
-            if (detail.length == 3) {
-                if (StringUtils.equals(detail[1], methodName)) {
-                    Class callableClz = entityMap.get(fieldName).getClz();
-                    if (callableClz != null) {
-                        Method[] methods = callableClz.getMethods();
-                        for (Method method : methods) {
-                            if (StringUtils.equals(methodName, method.getName())) {
-                                Class[] parameterType = method.getParameterTypes();
-                                Object[] args = new Object[parameterType.length];
-                                // 按顺序去遍历
-                                for (int i = 0, j = 0; i < parameterType.length && j < indexes.length; i++) {
-                                    // 如果是基于mock数据的需要拿到上面mock出来的值
-                                    if (StringUtils.equals(i + "", indexes[j])) {
-                                        // TODO: 03/12/2016 上下相关的
-                                        j++;
-                                    } else { // 否则直接给出默认值
-                                        args[i] = ClassUtils.newInstance(parameterType[i]);
-                                    }
-                                }
-                                try {
-                                    Object execution = method.invoke(indexes, args);
-                                    when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
-                                    break;
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
+            String detail = mockCallModel.getDetail();
+            List<String[]> mockInfoDetail = ParseMockCall.parse(detail);
+            if (mockInfoDetail.size() > 0) {
+                // 和mock数据耦合的参数位置
+                String[] indexOfParam = mockInfoDetail.get(0);
+                // 产生这些数据的类流
+                String[] classNames = mockInfoDetail.get(1);
+                // 对应的这些类的方法
+                String[] methodNames = mockInfoDetail.get(2);
+
+                // 这些在数组中的位置都是对应的关系
+
+                Object instance = entity.getInstance();
+                Class instanceClz = instance.getClass();
+                for (Method instanceMethod : instanceClz.getMethods()) {
+                    if (StringUtils.equals(methodName, instanceMethod.getName())) {
+                        Class[] parameterTypes = instanceMethod.getParameterTypes();
+                        Object[] args = new Object[parameterTypes.length];
+                        for (int i = 0, j = 0; i < parameterTypes.length && j < indexOfParam.length; i ++) { // 对相应的位置进行参数适配
+                            if (StringUtils.equals(i + "", indexOfParam[j])) {
+                                // TODO: 12/12/2016
+                                j++;
+                            } else { // 否则直接给出默认值
+                                // 目前只支持 基本类型和Timestamp类型
+                                args[i] = ClassUtils.newInstance(parameterTypes[i]);
                             }
+                        }
+                        try {
+                            Object execution = instanceMethod.invoke(instance, args);
+                            when(execution).thenReturn(mockReturnData(pathMap.get(methodName), execution));
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            logger.error(e);
+                        } finally {
+                            break;
                         }
                     }
                 }
