@@ -13,6 +13,7 @@ import com.codebabe.util.StringUtils;
 import org.apache.log4j.Logger;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,7 @@ public class MockGo extends OpenIt {
     }
 
     @Override
-    protected void mockData(MockCallModel mockCallModel, Map<String, Entity> entityMap, Map<String, String> pathMap) {
+    protected void mockData(MockCallModel mockCallModel, Map<String, Entity> entityMap, Map<String, String> pathMap, Map<String, Object> resultMap) throws InvocationTargetException, IllegalAccessException {
         logger.debug(String.format("model info = %s", JSON.toJSONString(mockCallModel)));
 
         String fieldName = mockCallModel.getCallable();
@@ -56,7 +57,9 @@ public class MockGo extends OpenIt {
                 for (Method method : methods) {
                     if (StringUtils.equals(methodName, method.getName())) {
                         try {
-                            when(execute(method, entity.getInstance())).thenReturn(mockReturnData(pathMap.get(methodName), mockCallModel.getReturnType()));
+                            Object result = mockReturnData(pathMap.get(methodName), mockCallModel.getReturnType());
+                            when(execute(method, entity.getInstance())).thenReturn(result);
+                            resultMap.put(methodName, result);
                             return;
                         } catch (Exception e) {
                             e.printStackTrace();
@@ -76,8 +79,8 @@ public class MockGo extends OpenIt {
             if (mockInfoDetail.size() > 0) {
                 // 和mock数据耦合的参数位置
                 String[] indexOfParam = mockInfoDetail.get(0);
-                // 产生这些数据的类流
-                String[] classNames = mockInfoDetail.get(1);
+                // 返回值的那个字段
+                String[] returnFileds = mockInfoDetail.get(1);
                 // 对应的这些类的方法
                 String[] methodNames = mockInfoDetail.get(2);
 
@@ -91,16 +94,40 @@ public class MockGo extends OpenIt {
                         Object[] args = new Object[parameterTypes.length];
                         for (int i = 0, j = 0; i < parameterTypes.length && j < indexOfParam.length; i ++) { // 对相应的位置进行参数适配
                             if (StringUtils.equals(i + "", indexOfParam[j])) {
-                                // TODO: 12/12/2016
+                                String connectedMockMethod = methodNames[i];
+                                String connectedMockFiled = returnFileds[i];
+                                Object mockResult = resultMap.get(connectedMockMethod);
+                                if (StringUtils.equals("self", connectedMockFiled)) {
+                                    args[i] = mockResult;
+                                } else {
+                                    // 结果集如果是list, 需要特殊的处理
+                                    if (mockResult instanceof List) {
+                                        int index = Integer.parseInt(StringUtils.substringAfter(connectedMockFiled, ":"));
+                                        List mockList = (List) mockResult;
+                                        for (Method method : mockList.get(index).getClass().getMethods()) {
+                                            if (StringUtils.equals(method.getName(), StringUtils.GETTER + StringUtils.reverseCaseByIndex(StringUtils.substringBefore(connectedMockFiled, ":"), 0))) {
+                                                // 通过get方法直接获取
+                                                args[i] = method.invoke(mockList.get(index));
+                                            }
+                                        }
+                                    } else {
+                                        for (Method method : mockResult.getClass().getMethods()) {
+                                            if (StringUtils.equals(method.getName(), StringUtils.GETTER + StringUtils.reverseCaseByIndex(connectedMockFiled, 0))) {
+                                                // 通过get方法直接获取
+                                                args[i] = method.invoke(mockResult);
+                                            }
+                                        }
+                                    }
+                                }
                                 j++;
                             } else { // 否则直接给出默认值
-                                // 目前只支持 基本类型和Timestamp类型
+                                // 目前只支持 基本类型和Timestamp类
                                 args[i] = ClassUtils.newInstance(parameterTypes[i]);
                             }
                         }
                         try {
-                            Object execution = instanceMethod.invoke(instance, args);
-                            when(execution).thenReturn(mockReturnData(pathMap.get(methodName), null));
+                            Object result = mockReturnData(pathMap.get(methodName), mockCallModel.getReturnType());
+                            when(instanceMethod.invoke(instance, args)).thenReturn(result);
                         } catch (Exception e) {
                             e.printStackTrace();
                             logger.error(e);

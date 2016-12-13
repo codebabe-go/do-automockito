@@ -65,8 +65,9 @@ public abstract class OpenIt implements Unflowerred {
         String path = pathMap.get(clz.getName());
         List<MockCallModel> mockitoList = scanner.scan4MockCall(path);
 
+        Map<String, Object> resultMap = new HashMap<>();
         for (MockCallModel mockCallModel : mockitoList) {
-            mockData(mockCallModel, classMap, pathMap);
+            mockData(mockCallModel, classMap, pathMap, resultMap);
         }
 
         if (printType.getType() == PrintType.Type.S_OUT) {
@@ -118,6 +119,8 @@ public abstract class OpenIt implements Unflowerred {
      *
      * @param mockCallModel 每个调用MockCall注解的 方法信息
      * @param classMap 已经mock过的类组成的map, <p>k: fieldName, v: fieldInstance</p>
+     * @param pathMap 结果对应的文件的map
+     * @param resultMap 每次mock后产生的结果
      */
-    protected abstract void mockData(MockCallModel mockCallModel, Map<String, Entity> classMap, Map<String, String> pathMap);
+    protected abstract void mockData(MockCallModel mockCallModel, Map<String, Entity> classMap, Map<String, String> pathMap, Map<String, Object> resultMap) throws InvocationTargetException, IllegalAccessException;
 }
