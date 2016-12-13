@@ -48,7 +48,7 @@ public abstract class OpenIt implements Unflowerred {
             throw new Exception(String.format("[go4Unflowerring]No print type = %d match", printType.getType()));
         }
 
-        Field[] fields = clz.getFields();
+        Field[] fields = clz.getDeclaredFields();
         T instance = clz.newInstance();
         Map<String, Entity> classMap = new HashMap<>();
         // 所有的注入filed都mock完毕

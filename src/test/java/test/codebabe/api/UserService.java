@@ -12,7 +12,7 @@ import javax.annotation.Resource;
 public class UserService {
 
     @Resource
-    public User user;
+    private User user;
 
     public User get(String param) {
         @MockCall

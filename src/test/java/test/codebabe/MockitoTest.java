@@ -61,7 +61,7 @@ public class MockitoTest {
                 break;
             }
         }
-        User user = userService.user.test("fz");
+        User user = userService.getUser().test("fz");
         when(user).thenReturn(new User(1L, "fz", 20,"location"));
         for (Method method : clz.getMethods()) {
             if (StringUtils.equals(method.getName(), "get")) {
