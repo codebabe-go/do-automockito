@@ -80,7 +80,7 @@ public class MockGo extends OpenIt {
                 // 和mock数据耦合的参数位置
                 String[] indexOfParam = mockInfoDetail.get(0);
                 // 返回值的那个字段
-                String[] returnFileds = mockInfoDetail.get(1);
+                String[] returnFields = mockInfoDetail.get(1);
                 // 对应的这些类的方法
                 String[] methodNames = mockInfoDetail.get(2);
 
@@ -95,7 +95,7 @@ public class MockGo extends OpenIt {
                         for (int i = 0, j = 0; i < parameterTypes.length && j < indexOfParam.length; i ++) { // 对相应的位置进行参数适配
                             if (StringUtils.equals(i + "", indexOfParam[j])) {
                                 String connectedMockMethod = methodNames[i];
-                                String connectedMockFiled = returnFileds[i];
+                                String connectedMockFiled = returnFields[i];
                                 Object mockResult = resultMap.get(connectedMockMethod);
                                 if (StringUtils.equals("self", connectedMockFiled)) {
                                     args[i] = mockResult;
@@ -104,17 +104,19 @@ public class MockGo extends OpenIt {
                                     if (mockResult instanceof List) {
                                         int index = Integer.parseInt(StringUtils.substringAfter(connectedMockFiled, ":"));
                                         List mockList = (List) mockResult;
-                                        for (Method method : mockList.get(index).getClass().getMethods()) {
-                                            if (StringUtils.equals(method.getName(), StringUtils.GETTER + StringUtils.reverseCaseByIndex(StringUtils.substringBefore(connectedMockFiled, ":"), 0))) {
-                                                // 通过get方法直接获取
-                                                args[i] = method.invoke(mockList.get(index));
-                                            }
-                                        }
+//                                        for (Method method : mockList.get(index).getClass().getMethods()) {
+//                                            if (StringUtils.equals(method.getName(), StringUtils.GETTER + StringUtils.reverseCaseByIndex(StringUtils.substringBefore(connectedMockFiled, ":"), 0))) {
+//                                                // 通过get方法直接获取
+//                                                args[i] = method.invoke(mockList.get(index));
+//                                                break;
+//                                            }
+//                                        }
                                     } else {
                                         for (Method method : mockResult.getClass().getMethods()) {
                                             if (StringUtils.equals(method.getName(), StringUtils.GETTER + StringUtils.reverseCaseByIndex(connectedMockFiled, 0))) {
                                                 // 通过get方法直接获取
                                                 args[i] = method.invoke(mockResult);
+                                                break;
                                             }
                                         }
                                     }
